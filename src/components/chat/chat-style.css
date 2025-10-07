@@ -1,0 +1,375 @@
+/* Message Actions (Edit/Delete) */
+.chat-message {
+    position: relative;
+}
+
+.message-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.chat-message:hover .message-actions {
+    opacity: 1;
+}
+
+.action-button {
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.action-button:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.edit-button {
+    color: #4a90e2;
+}
+
+.delete-button {
+    color: #e74c3c;
+}
+
+/* Message Edit Mode */
+.message-edit {
+    width: 100%;
+}
+
+.edit-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 12px;
+    border: 2px solid #4a90e2;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.save-button,
+.cancel-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.save-button {
+    background: #4a90e2;
+    color: white;
+}
+
+.save-button:hover {
+    background: #357abd;
+}
+
+.cancel-button {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.cancel-button:hover {
+    background: #d0d0d0;
+}
+
+/* Conversation Item Delete Button */
+.conversation-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.conversation-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.delete-conversation-button {
+    padding: 8px;
+    background: transparent;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.conversation-item:hover .delete-conversation-button {
+    opacity: 1;
+}
+
+.delete-conversation-button:hover {
+    background: rgba(231, 76, 60, 0.1);
+    border-radius: 4px;
+}
+
+/* Conversations Header */
+.conversations-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+}
+
+.conversations-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.delete-all-button {
+    padding: 6px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.delete-all-button:hover {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+    border-radius: 4px;
+}
+
+/* Delete All Confirmation */
+.delete-all-confirm {
+    padding: 12px;
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    margin: 8px 12px;
+    border-radius: 4px;
+}
+
+.confirm-delete-all,
+.cancel-delete-all {
+    width: 100%;
+    padding: 10px;
+    margin: 4px 0;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.confirm-delete-all {
+    background: #e74c3c;
+    color: white;
+}
+
+.confirm-delete-all:hover {
+    background: #c0392b;
+}
+
+.cancel-delete-all {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.cancel-delete-all:hover {
+    background: #d0d0d0;
+}
+
+/* Voice Chat Styles */
+.voice-chat-container {
+    padding: 24px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.start-call-button {
+    width: 100%;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.start-call-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.voice-call-active {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.call-status {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.status-indicator {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #e0e0e0;
+    border-radius: 24px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 16px;
+}
+
+.status-indicator.recording {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.transcript-display {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    min-height: 60px;
+    margin-top: 12px;
+}
+
+.transcript-display p {
+    margin: 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.call-controls {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.control-button {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background: #f0f0f0;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.control-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.control-button.active {
+    background: #667eea;
+    color: white;
+}
+
+.control-button.end-call {
+    background: #e74c3c;
+    color: white;
+}
+
+.control-button.end-call:hover {
+    background: #c0392b;
+}
+
+.voice-error {
+    background: #ffe6e6;
+    color: #e74c3c;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 16px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.voice-info {
+    margin-top: 24px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #666;
+}
+
+.voice-info p {
+    margin: 8px 0;
+}
+
+.voice-info strong {
+    color: #333;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .message-actions {
+        opacity: 1;
+    }
+    
+    .delete-conversation-button {
+        opacity: 1;
+    }
+    
+    .voice-chat-container {
+        padding: 16px;
+    }
+    
+    .control-button {
+        width: 50px;
+        height: 50px;
+    }
+}

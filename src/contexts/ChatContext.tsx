@@ -2,21 +2,19 @@ import React, { createContext, useState, useEffect, useContext, useCallback } fr
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import '../components/chat/chat-style.css';
 
-// API URL
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://backend-data-d6uy.onrender.com';
 const API_URL = `${BACKEND_URL}/api`;
 const SOCKET_URL = BACKEND_URL;
-console.log('BACKEND_URL:', BACKEND_URL);
-console.log(`FRONTEND_PORT`, `${process.env.PORT}`);
 
-// Types
 export interface Message {
     id: string;
     content: string;
     sender: 'user' | 'ai';
     conversation_id?: string;
     created_at: Date;
+    updated_at?: Date;
 }
 
 export interface Conversation {
@@ -37,12 +35,14 @@ interface ChatContextType {
     loadMoreMessages: () => Promise<void>;
     clearMessages: () => void;
     clearError: () => void;
+    deleteMessage: (message_id: string) => Promise<void>;
+    deleteConversation: (conversation_id: string) => Promise<void>;
+    deleteAllConversations: () => Promise<void>;
+    editMessage: (message_id: string, new_content: string) => Promise<void>;
 }
 
-// Create context
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
-// Provider component
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, token } = useAuth();
     const [socket, setSocket] = useState<Socket | null>(null);
@@ -54,19 +54,22 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [messagesOffset, setMessagesOffset] = useState<number>(0);
     const [hasMoreMessages, setHasMoreMessages] = useState<boolean>(true);
 
-    // Connect to socket when authenticated
+    useEffect(() => {
+        if (token) {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        } else {
+            delete axios.defaults.headers.common['Authorization'];
+        }
+    }, [token]);
+
     useEffect(() => {
         if (isAuthenticated && token) {
-            // Connect to socket
             const newSocket = io(SOCKET_URL, {
-                auth: {
-                    token
-                }
+                auth: { token }
             });
 
             setSocket(newSocket);
 
-            // Socket event listeners
             newSocket.on('connect', () => {
                 console.log('Connected to socket');
             });
@@ -81,47 +84,43 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
 
             newSocket.on('message-received', (message: Message) => {
-                // Add user message to chat
                 setMessages(prevMessages => [...prevMessages, {
                     ...message,
                     created_at: new Date(message.created_at)
                 }]);
-
-                // Reload conversations after sending a message
                 loadConversations();
             });
 
             newSocket.on('ai-message', (message: Message) => {
-                // Add AI message to chat
                 setMessages(prevMessages => [...prevMessages, {
                     ...message,
                     created_at: new Date(message.created_at)
                 }]);
-
-                // Reload conversations after receiving AI message
                 loadConversations();
             });
 
-            // Load conversations
             loadConversations();
 
-            // Cleanup on unmount
             return () => {
                 newSocket.disconnect();
             };
         }
     }, [isAuthenticated, token]);
 
-    // Load conversations
     const loadConversations = async () => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated || !token) return;
 
         try {
             setIsLoading(true);
-            const response = await axios.get(`${API_URL}/chat/conversations`);
+            const response = await axios.get(`${API_URL}/chat/conversations`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             setConversations(response.data.data.conversations.map((conv: any) => ({
-                ...conv,
-                created_at: new Date(conv.created_at)
+                conversation_id: conv.conversationId || conv.conversation_id,
+                lastmessage: conv.lastMessage || conv.lastmessage,
+                created_at: new Date(conv.createdAt || conv.created_at)
             })));
             setIsLoading(false);
         } catch (error: any) {
@@ -131,7 +130,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Load conversation messages
     const loadConversation = async (conversation_id: string) => {
         if (!isAuthenticated) return;
 
@@ -151,10 +149,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             setMessages(response.data.data.messages.map((msg: any) => ({
                 ...msg,
-                created_at: new Date(msg.created_at)
+                created_at: new Date(msg.created_at),
+                updated_at: msg.updated_at ? new Date(msg.updated_at) : undefined
             })));
 
-            // Join conversation room
             if (socket) {
                 socket.emit('join-conversation', conversation_id);
             }
@@ -167,7 +165,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Load more messages
     const loadMoreMessages = async () => {
         if (!isAuthenticated || !currentconversation_id || !hasMoreMessages) return;
 
@@ -185,7 +182,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             const newMessages = response.data.data.messages.map((msg: any) => ({
                 ...msg,
-                created_at: new Date(msg.created_at)
+                created_at: new Date(msg.created_at),
+                updated_at: msg.updated_at ? new Date(msg.updated_at) : undefined
             }));
 
             if (newMessages.length === 0) {
@@ -203,26 +201,22 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Send message
     const sendMessage = async (content: string) => {
         if (!isAuthenticated) return;
 
         try {
             setIsLoading(true);
 
-            // Use socket for real-time communication
             if (socket) {
                 socket.emit('user-message', {
                     message: content,
                     conversation_id: currentconversation_id
                 });
 
-                // Force reload conversations after a short delay to ensure they're updated
                 setTimeout(() => {
                     loadConversations();
                 }, 1000);
             } else {
-                // Fallback to REST API
                 const response = await axios.post(`${API_URL}/chat`, {
                     message: content,
                     conversation_id: currentconversation_id
@@ -230,12 +224,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 const { userMessage, aiMessage, conversation_id } = response.data.data;
 
-                // Update current conversation ID if it's a new conversation
                 if (!currentconversation_id) {
                     setCurrentconversation_id(conversation_id);
                 }
 
-                // Add messages to chat
                 setMessages(prevMessages => [
                     ...prevMessages,
                     {
@@ -248,7 +240,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 ]);
 
-                // Update conversations list
                 await loadConversations();
             }
 
@@ -260,25 +251,111 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Start new conversation
+    const deleteMessage = async (message_id: string) => {
+        if (!isAuthenticated) return;
+
+        try {
+            setIsLoading(true);
+            await axios.delete(`${API_URL}/chat/message/${message_id}`);
+
+            setMessages(prevMessages => prevMessages.filter(msg => msg.id !== message_id));
+            await loadConversations();
+
+            setIsLoading(false);
+        } catch (error: any) {
+            console.error('Error deleting message:', error);
+            setError(error.response?.data?.error || 'Failed to delete message');
+            setIsLoading(false);
+        }
+    };
+
+    const deleteConversation = async (conversation_id: string) => {
+        if (!isAuthenticated) return;
+
+        try {
+            setIsLoading(true);
+            await axios.delete(`${API_URL}/chat/conversation/${conversation_id}`);
+
+            if (currentconversation_id === conversation_id) {
+                setCurrentconversation_id(null);
+                setMessages([]);
+            }
+
+            await loadConversations();
+            setIsLoading(false);
+        } catch (error: any) {
+            console.error('Error deleting conversation:', error);
+            setError(error.response?.data?.error || 'Failed to delete conversation');
+            setIsLoading(false);
+        }
+    };
+
+    const deleteAllConversations = async () => {
+        if (!isAuthenticated) return;
+
+        try {
+            setIsLoading(true);
+            await axios.delete(`${API_URL}/chat/conversations`);
+
+            setCurrentconversation_id(null);
+            setMessages([]);
+            setConversations([]);
+
+            setIsLoading(false);
+        } catch (error: any) {
+            console.error('Error deleting all conversations:', error);
+            setError(error.response?.data?.error || 'Failed to delete all conversations');
+            setIsLoading(false);
+        }
+    };
+
+    const editMessage = async (message_id: string, new_content: string) => {
+        if (!isAuthenticated) return;
+
+        try {
+            setIsLoading(true);
+            const response = await axios.put(`${API_URL}/chat/message/${message_id}`, {
+                content: new_content
+            });
+
+            const updatedMessage = response.data.data;
+
+            setMessages(prevMessages =>
+                prevMessages.map(msg =>
+                    msg.id === message_id
+                        ? {
+                            ...msg,
+                            content: updatedMessage.content,
+                            updated_at: new Date(updatedMessage.updated_at)
+                        }
+                        : msg
+                )
+            );
+
+            await loadConversations();
+            setIsLoading(false);
+        } catch (error: any) {
+            console.error('Error editing message:', error);
+            setError(error.response?.data?.error || 'Failed to edit message');
+            setIsLoading(false);
+        }
+    };
+
     const startNewConversation = () => {
         setCurrentconversation_id(null);
         setMessages([]);
         setMessagesOffset(0);
         setHasMoreMessages(true);
 
-        // Leave current conversation room
         if (socket && currentconversation_id) {
             socket.emit('leave-conversation', currentconversation_id);
         }
     };
 
-    // Clear messages
     const clearMessages = () => {
         setMessages([]);
     };
 
-    // Clear error
     const clearError = () => {
         setError(null);
     };
@@ -296,7 +373,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 loadConversation,
                 loadMoreMessages,
                 clearMessages,
-                clearError
+                clearError,
+                deleteMessage,
+                deleteConversation,
+                deleteAllConversations,
+                editMessage
             }}
         >
             {children}
@@ -304,7 +385,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 };
 
-// Custom hook to use chat context
 export const useChat = () => {
     const context = useContext(ChatContext);
 

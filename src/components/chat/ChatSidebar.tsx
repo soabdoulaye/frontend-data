@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiLogOut, FiSettings, FiUser } from 'react-icons/fi';
+import { FiPlus, FiLogOut, FiSettings, FiUser, FiTrash2, FiMoreVertical } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChat, Conversation } from '../../contexts/ChatContext';
 import { formatDate } from '../../utils/dateUtils';
-import { FiX, FiChevronLeft } from 'react-icons/fi';
+import './chat-style.css';
 
 interface ChatSidebarProps {
     isOpen: boolean;
@@ -13,8 +13,16 @@ interface ChatSidebarProps {
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose }) => {
     const { user, logout } = useAuth();
-    const { conversations, currentconversation_id, startNewConversation, loadConversation } = useChat();
+    const {
+        conversations,
+        currentconversation_id,
+        startNewConversation,
+        loadConversation,
+        deleteConversation,
+        deleteAllConversations
+    } = useChat();
     const navigate = useNavigate();
+    const [showDeleteAll, setShowDeleteAll] = useState(false);
 
     const handleLogout = () => {
         logout();
@@ -35,6 +43,28 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose }) => {
 
     const handleProfileClick = () => {
         navigate('/profile');
+    };
+
+    const handleDeleteConversation = async (e: React.MouseEvent, conversation_id: string) => {
+        e.stopPropagation();
+        if (window.confirm('Are you sure you want to delete this conversation?')) {
+            try {
+                await deleteConversation(conversation_id);
+            } catch (error) {
+                console.error('Error deleting conversation:', error);
+            }
+        }
+    };
+
+    const handleDeleteAll = async () => {
+        if (window.confirm('Are you sure you want to delete ALL conversations? This action cannot be undone.')) {
+            try {
+                await deleteAllConversations();
+                setShowDeleteAll(false);
+            } catch (error) {
+                console.error('Error deleting all conversations:', error);
+            }
+        }
     };
 
     return (
@@ -61,15 +91,37 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose }) => {
             </div>
 
             <div className="conversations-list">
-                <h3>Conversations</h3>
+                <div className="conversations-header">
+                    <h3>Conversations</h3>
+                    {conversations.length > 0 && (
+                        <button
+                            className="delete-all-button"
+                            onClick={() => setShowDeleteAll(!showDeleteAll)}
+                            title="Delete all conversations"
+                        >
+                            <FiMoreVertical />
+                        </button>
+                    )}
+                </div>
+
+                {showDeleteAll && (
+                    <div className="delete-all-confirm">
+                        <button className="confirm-delete-all" onClick={handleDeleteAll}>
+                            <FiTrash2 /> Delete All Conversations
+                        </button>
+                        <button className="cancel-delete-all" onClick={() => setShowDeleteAll(false)}>
+                            Cancel
+                        </button>
+                    </div>
+                )}
+
                 {conversations.length === 0 ? (
                     <div className="no-conversations">No conversations yet</div>
                 ) : (
                     conversations.map((conversation: Conversation) => (
                         <div
                             key={conversation.conversation_id}
-                            className={`conversation-item ${currentconversation_id === conversation.conversation_id ? 'active' : ''
-                                }`}
+                            className={`conversation-item ${currentconversation_id === conversation.conversation_id ? 'active' : ''}`}
                             onClick={() => handleConversationClick(conversation.conversation_id)}
                         >
                             <div className="conversation-content">
@@ -78,6 +130,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ isOpen, onClose }) => {
                                     {formatDate(conversation.created_at)}
                                 </div>
                             </div>
+                            <button
+                                className="delete-conversation-button"
+                                onClick={(e) => handleDeleteConversation(e, conversation.conversation_id)}
+                                title="Delete conversation"
+                            >
+                                <FiTrash2 />
+                            </button>
                         </div>
                     ))
                 )}

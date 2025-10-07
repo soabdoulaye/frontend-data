@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Message } from '../../contexts/ChatContext';
 import { formatTime } from '../../utils/dateUtils';
-import { FiUser } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiCheck, FiX } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
+import { useChat } from '../../contexts/ChatContext';
+import './chat-style.css';
 
 interface ChatMessageProps {
     message: Message;
@@ -10,48 +12,76 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     const { user } = useAuth();
+    const { deleteMessage, editMessage } = useChat();
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(message.content);
+    const [showActions, setShowActions] = useState(false);
     const isUser = message.sender === 'user';
 
-    // Function to format message content with proper line breaks and code blocks
+    const handleDelete = async () => {
+        if (window.confirm('Are you sure you want to delete this message?')) {
+            try {
+                await deleteMessage(message.id);
+            } catch (error) {
+                console.error('Error deleting message:', error);
+            }
+        }
+    };
+
+    const handleEdit = () => {
+        setIsEditing(true);
+        setEditContent(message.content);
+    };
+
+    const handleSaveEdit = async () => {
+        if (editContent.trim() && editContent !== message.content) {
+            try {
+                await editMessage(message.id, editContent.trim());
+                setIsEditing(false);
+            } catch (error) {
+                console.error('Error editing message:', error);
+            }
+        } else {
+            setIsEditing(false);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setEditContent(message.content);
+    };
+
     const formatMessageContent = (content: string) => {
-        // Check if content contains code blocks
         if (content.includes('```')) {
             const parts = [];
             let isCodeBlock = false;
             let currentPart = '';
             let codeLanguage = '';
 
-            // Split content by lines
             const lines = content.split('\n');
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
 
-                // Check for code block markers
                 if (line.startsWith('```')) {
                     if (!isCodeBlock) {
-                        // Start of code block
                         if (currentPart) {
-                            // Add text before code block
                             parts.push({ type: 'text', content: currentPart });
                             currentPart = '';
                         }
                         isCodeBlock = true;
-                        codeLanguage = line.slice(3).trim(); // Get language if specified
+                        codeLanguage = line.slice(3).trim();
                     } else {
-                        // End of code block
                         parts.push({ type: 'code', content: currentPart, language: codeLanguage });
                         currentPart = '';
                         isCodeBlock = false;
                         codeLanguage = '';
                     }
                 } else {
-                    // Add line to current part
                     currentPart += line + (i < lines.length - 1 ? '\n' : '');
                 }
             }
 
-            // Add any remaining content
             if (currentPart) {
                 parts.push({
                     type: isCodeBlock ? 'code' : 'text',
@@ -60,7 +90,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 });
             }
 
-            // Render parts
             return (
                 <>
                     {parts.map((part, index) => {
@@ -71,7 +100,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                                 </pre>
                             );
                         } else {
-                            // For text parts, handle line breaks
                             const textLines = part.content.split('\n');
                             return (
                                 <div key={index} className="text-block">
@@ -88,7 +116,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 </>
             );
         } else {
-            // Simple case: no code blocks, just handle line breaks
             const lines = content.split('\n');
             return lines.map((line, index) => (
                 <React.Fragment key={index}>
@@ -100,7 +127,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     };
 
     return (
-        <div className={`chat-message ${isUser ? 'user-message' : 'ai-message'}`}>
+        <div
+            className={`chat-message ${isUser ? 'user-message' : 'ai-message'}`}
+            onMouseEnter={() => setShowActions(true)}
+            onMouseLeave={() => setShowActions(false)}
+        >
             <div className="message-avatar">
                 {isUser ? (
                     user?.profile_picture ? (
@@ -122,11 +153,46 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 )}
             </div>
             <div className="message-content">
-                <div className="message-text">
-                    {formatMessageContent(message.content)}
-                </div>
+                {isEditing ? (
+                    <div className="message-edit">
+                        <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="edit-textarea"
+                            rows={3}
+                            autoFocus
+                        />
+                        <div className="edit-actions">
+                            <button onClick={handleSaveEdit} className="save-button">
+                                <FiCheck /> Save
+                            </button>
+                            <button onClick={handleCancelEdit} className="cancel-button">
+                                <FiX /> Cancel
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <div className="message-text">
+                            {formatMessageContent(message.content)}
+                        </div>
+                        {isUser && showActions && !isEditing && (
+                            <div className="message-actions">
+                                <button onClick={handleEdit} className="action-button edit-button">
+                                    <FiEdit2 />
+                                </button>
+                                <button onClick={handleDelete} className="action-button delete-button">
+                                    <FiTrash2 />
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
                 <div className="message-info">
-                    <span className="message-time">{formatTime(message.created_at)}</span>
+                    <span className="message-time">
+                        {formatTime(message.created_at)}
+                        {message.updated_at && ' (edited)'}
+                    </span>
                     <span className="message-sender">{isUser ? user?.username : 'AI Assistant'}</span>
                 </div>
             </div>
